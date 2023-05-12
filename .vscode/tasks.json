@@ -6,10 +6,11 @@
             "label": "Build Library",
             "command": "dotnet",
             "args": [
-                "build"
+                "build",
+                "."
             ],
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/src"
             },
             "group": "build"
         }

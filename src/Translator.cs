@@ -27,14 +27,19 @@ The original BASIC version handled connection to a serial port.
 I only plan on porting the tranlation to and from 5 bit to and from 7 bit values.
 */
 
-// Baudot is different that just about any other character set you've worked with. Imagine if pressing and releasing the shift key sent two different hidden characters.
+// Baudot is different that just about any other character set you've worked with.
+// Imagine if pressing AND releasing the shift key sent two different non-printable characters.
 
 public class Translator
 {
     private Dictionary<int, char> translations = new();
 
-    // WIP: Need to figure out some placeholders for the fig, ltr, undef, and bell characters.
-    private string USBaudot = "\0T\rO HNM\nLRGIPCVEZDBSYFXAWJ{fig}UQK{ltr}\05\r9 {undef},.\n)4&80:;3\"$?{bell}6!/-2'{fig}71({ltr}";
+    // WIP: Need to figure out some placeholders for the fig, ltr, and bell characters.
+    private string USBaudot = "\u0000T\rO HNM\nLRGIPCVEZDBSYFXAWJ{fig}UQK{ltr}"
+                            + "\u00005\r9 \u0007,.\n)4&80:;3\"$?{bell}6!/-2'{fig}71({ltr}";
+    // \0, E, \n, A, spc, S, I, U, -3(cr), D, R, J, N, F, C, K, T, Z, L, W, H, Y, P, Q, O, B, G, -1(fig), M, X, V, -2(ltr)
+    // \0, 3, \n, -, spc, (bell), 8, 7, -3(cr), $, 4, ', (comma), !, :, (, 5, ", ), 2, #, 6, 0, 1, 9, ?, &, -1(fig), ., /, ;, -2(ltr)
+
 
     private bool Figures = false;
     private Stream? inputData;
@@ -42,6 +47,14 @@ public class Translator
 
     public Translator(Stream input, Stream output)
     {
+        if (!input.CanRead)
+        {
+            throw new ArgumentException("Can't read from input stream.", nameof(input));
+        }
+        if (!output.CanWrite)
+        {
+            throw new ArgumentException("Can't write to output stream.", nameof(output));
+        }
         inputData = input;
         outputData = output;
     }
@@ -56,6 +69,15 @@ public class Translator
         Figures = true;
     }
 
+    public void ToBaudot()
+    {
+        int prior = 0;
+        int i = inputData.ReadByte();
+        while (i != -1)
+        {
+
+        }
+    }
 }
 
 /*
@@ -71,8 +93,6 @@ DATA 00,51,13,45,32,07,56,55,-3,36,52,39,44,33,58,40,53,34,41,50,35,54,48,49,57,
 */
 
 /*
-DECLARE SUB SlowType (a$)
-DECLARE SUB OpeningScreen ()
 CONST True = -1
 CONST False = 0
 CONST Escape = 27
@@ -296,14 +316,14 @@ ReadTTY:
         a = ASC(a$) AND 31
         SELECT CASE Char(a)
             CASE -3
-                PRINT "�";
+                PRINT "�"; (C#: \r)
             CASE -2
                 Shift = 0
             CASE -1
                 Shift = 32
             CASE ELSE
                 b$ = CHR$(Char(a + Shift))
-                IF b$ = CHR$(13) THEN PRINT "�";
+                IF b$ = CHR$(13) THEN PRINT "�"; (C#: \r)
                 PRINT b$;
                 IF Sav = True THEN PRINT #2, b$; : IF b$ = CHR$(13) THEN PRINT #2, CHR$(10);
                 IF Prn = True THEN
@@ -364,8 +384,8 @@ Sendit:
     IF Echo = True THEN
         COLOR 2
         IF e$ = CHR$(13) THEN
-            IF LastSent <> 2 THEN PRINT "��";
-            PRINT "�";
+            IF LastSent <> 2 THEN PRINT "��"; (C#: \r\r)
+            PRINT "�"; (C#: \n)
         END IF
         IF e$ = CHR$(7) THEN
             BEEP
@@ -504,7 +524,7 @@ DosShell:
     WIDTH 80, 25
     CLS
     COLOR 15
-    PRINT "Type 'EXIT' to return to TTY Talk."
+    PRINT "Type 'EXIT' to return."
     SHELL
     WIDTH 80, ScreenLength
     SHELL LEFT$(TtyDir$, 2)
@@ -552,14 +572,8 @@ GetCommand:
         PRINT "auto-downlink option which seperates messages at the 'NNNN'."
         PRINT "You can omit this option, or enter a '-' (dash) as a place holder."
         PRINT
-        PRINT "The fourth paramater is optional.  It is the start-up baud rate for TTYTALK."
+        PRINT "The fourth paramater is optional.  It is the start-up baud rate."
         PRINT "Omitting this option will default to 1200 baud."
-        PRINT
-        PRINT "Options can also be set by the DOS variable TTYTALK."
-        PRINT "Example:  SET TTYTALK=2 C:\MTF\MSG\ E:\ 1200"
-        PRINT "Adding this line to the AUTOEXEC.BAT file will save you having to send the"
-        PRINT "paramaters every time you start TTYTALK."
-        PRINT "Note: Command line options override the TTYTALK variable."
         PRINT
         PRINT "Press any key to exit.";
         DO: LOOP UNTIL INKEY$ <> ""
@@ -584,134 +598,77 @@ Help:
     COM(CommPort) STOP
     COLOR 15
     IF POS(0) > 1 THEN PRINT
-    PRINT "������������������������������������������������������������������������������͸"
-    PRINT "�Press the Escape key to terminate communications program.                     �"
-    PRINT "�Press F1 to display this help screen.                                         �"
-    PRINT "�Press F2 to transfer a file from disk to teletype.                            �"
-    PRINT "�";
-    IF RamDrvAvailable = False THEN COLOR 8
+    PRINT "Press the Escape key to terminate communications program."
+    PRINT "Press F1 to display this help screen."
+    PRINT "Press F2 to transfer a file from disk to teletype."
     PRINT "Press F3 to toggle on/off the auto downlink file system.";
-    COLOR 15
-    PRINT TAB(80); "�"
-    PRINT "�Press F4 to save a file from teletype to disk.  Press again to stop saving.   �"
-    PRINT "�Press F5 to toggle Local Echo on/off.                                         �"
-    PRINT "�Press F6 to toggle Echo to Printer on/off.                                    �"
-    PRINT "�Press F7 to change speed to 75/300/1200 baud. (Default is 1200.)              �"
-    PRINT "�";
-    IF RamDrvAvailable = False THEN COLOR 8
+    PRINT "Press F4 to save a file from teletype to disk.  Press again to stop saving."
+    PRINT "Press F5 to toggle Local Echo on/off."
+    PRINT "Press F6 to toggle Echo to Printer on/off."
+    PRINT "Press F7 to change speed to 75/300/1200 baud. (Default is 1200.)"
     PRINT "Press F8 to process the auto downlink files.  (Auto-downlink must be OFF.)";
-    COLOR 15
-    PRINT TAB(80); "�"
-    PRINT "�Press F9 to go to the DOS shell. (Type 'EXIT' to return to TTY Talk.)         �"
-    PRINT "�Press F10 to reset the comm port if you stop receiving data.                  �"
-    PRINT "�                                                                              �"
-    PRINT "�Press HOME to clear the screen.                                               �"
-    PRINT "�Press the ` (reverse apostrophe) to transmit a LTRS function.  (Use for LDR.) �"
-    PRINT "�                                                                              �"
-    PRINT "�All other keys will be transmitted to the teletype as applicable.             �"
-    PRINT "������������������������������������������������������������������������������;"
+    PRINT "Press F9 to go to the DOS shell. (Type 'EXIT' to return to TTY Talk.)"
+    PRINT "Press F10 to reset the comm port if you stop receiving data."
+    PRINT "Press HOME to clear the screen."
+    PRINT "Press the ` (reverse apostrophe) to transmit a LTRS function.  (Use for LDR.)"
+    PRINT "All other keys will be transmitted to the teletype as applicable."
     COLOR 7
     COM(CommPort) ON
 RETURN
 
 PrintStatus:
     COM(CommPort) STOP
-    RcvX = POS(0)
-    RcvY = CSRLIN
-    VIEW PRINT
-    LOCATE 3, 1
-    COLOR 9
     IF RamDrvAvailable = True THEN
-        PRINT "�(F3) Auto Downlink is ";
+        PRINT "(F3) Auto Downlink is ";
         IF Auto = True THEN
-            COLOR 2
             PRINT "on. ";
         ELSE
-            COLOR 4
-                PRINT "off.";
+            PRINT "off.";
         END IF
     ELSE
-        PRINT "�(F3) Not available.       ";
+        PRINT "(F3) Not available.       ";
     END IF
-    COLOR 9
-    PRINT " �(F4) File Saving is ";
+    PRINT "(F4) File Saving is ";
     IF Sav = True THEN
-        COLOR 2
         PRINT "on. ";
     ELSE
-        COLOR 4
         PRINT "off.";
     END IF
-    COLOR 9
-    PRINT "  �(F5) Local echo is ";
+    PRINT "(F5) Local echo is ";
     IF Echo = True THEN
-        COLOR 2
         PRINT "on. ";
     ELSE
-        COLOR 4
         PRINT "off.";
     END IF
-    COLOR 9
-    PRINT "�"
-    PRINT "�(F6) Printer echo is ";
+    PRINT "(F6) Printer echo is ";
     IF Prn = True THEN
-        COLOR 2
         PRINT "on. ";
     ELSE
-        COLOR 4
         PRINT "off.";
     END IF
-    COLOR 9
-    PRINT "  �(F7) Baud rate:  ";
-    COLOR 14
+    PRINT "(F7) Baud rate:  ";
     PRINT RIGHT$("   " + Speed$, 4);
-    COLOR 9
     IF RamDrvAvailable = True THEN
-        PRINT "     �(F8) Process Downlink  �"
+        PRINT "(F8) Process Downlink"
     ELSE
-        PRINT "     �(F8) Not available.    �"
+        PRINT "(F8) Not available."
     END IF
-    VIEW PRINT 6 TO ScreenLength
-    COLOR 7
-    LOCATE RcvY, RcvX
     COM(CommPort) ON
 RETURN
 
 ClearScreen:
     COM(CommPort) STOP
-    VIEW PRINT
-    CLS
-    COLOR 11
-    PRINT "TTYTALK v2.71   Press F1 for full key listing.   (C) 1995 -- RM2(SS) Ryan Grange"
-    COLOR 9
-    PRINT "������������������������������������������������������������������������������ķ"
-    PRINT
-    PRINT
-    PRINT "������������������������������������������������������������������������������Ľ"
-    COLOR 7
-    VIEW PRINT 6 TO ScreenLength
     COM(CommPort) ON
     GOSUB PrintStatus
 RETURN
 
 SUB OpeningScreen
     CLS
-    LOCATE 12, 30
-    COLOR 15
-    SlowType ("Teletype Emulator v2.71")
-    LOCATE 24, 28
-    COLOR 15
     PRINT "Press any key to continue.";
     DO: LOOP UNTIL INKEY$ <> ""
 END SUB
 
 SUB SlowType (a$)
-    IF a$ <> "" THEN
-        FOR i = 1 TO LEN(a$)
-            PRINT MID$(a$, i, 1);
-            t = TIMER
-            DO: LOOP UNTIL t <> TIMER
-        NEXT i
-    END IF
+    printed a$ 1 char/sec
 END SUB
 */

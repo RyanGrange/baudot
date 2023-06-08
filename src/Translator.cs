@@ -34,12 +34,84 @@ public class Translator
 {
     private Dictionary<int, char> translations = new();
 
-    // WIP: Need to figure out some placeholders for the fig, ltr, and bell characters.
-    private string USBaudot = "\u0000T\rO HNM\nLRGIPCVEZDBSYFXAWJ{fig}UQK{ltr}"
-                            + "\u00005\r9 \u0007,.\n)4&80:;3\"$?{bell}6!/-2'{fig}71({ltr}";
-    // \0, E, \n, A, spc, S, I, U, -3(cr), D, R, J, N, F, C, K, T, Z, L, W, H, Y, P, Q, O, B, G, -1(fig), M, X, V, -2(ltr)
-    // \0, 3, \n, -, spc, (bell), 8, 7, -3(cr), $, 4, ', (comma), !, :, (, 5, ", ), 2, #, 6, 0, 1, 9, ?, &, -1(fig), ., /, ;, -2(ltr)
+    /*
+    ' Baudot <-> ASCII translation table
+    '    00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+    DATA 00,69,13,65,32,83,73,85,-3,68,82,74,78,70,67,75,84,90,76,87,72,89,80,81,79,66,71,-1,77,88,86,-2
+    DATA 00,51,13,45,32,07,56,55,-3,36,52,39,44,33,58,40,53,34,41,50,35,54,48,49,57,63,38,-1,46,47,59,-2
 
+    \0, E, \n, A, spc, S, I, U, -3(cr), D, R, J, N, F, C, K, T, Z, L, W, H, Y, P, Q, O, B, G, -1(fig), M, X, V, -2(ltr)
+    \0, 3, \n, -, spc, (bell), 8, 7, -3(cr), $, 4, ', (comma), !, :, (, 5, ", ), 2, #, 6, 0, 1, 9, ?, &, -1(fig), ., /, ;, -2(ltr)
+    */
+    private char[] USBaudotLetters = new char[] {
+        '\u0000', // Null, but created a gap space on the teletype tape.
+        'E',
+        '\n', // LF
+        'A',
+        ' ', // Space (intentional)
+        'S',
+        'I',
+        'U',
+        '\r', // CR
+        'D',
+        'R',
+        'J',
+        'N',
+        'F',
+        'C',
+        'K',
+        'T',
+        'Z',
+        'L',
+        'W',
+        'H',
+        'Y',
+        'P',
+        'Q',
+        'O',
+        'B',
+        'G',
+        ' ', // Figures code goes here.
+        'M',
+        'X',
+        'V',
+        ' ' // Letters code goes here.
+    };
+
+    private char[] USBaudotFigures = new char[] {
+        '\u0000', // Null, but created a gap space on the teletype tape.
+        '3',
+        '\n', // LF
+        '-',
+        ' ', // Space (intentional)
+        '\u0007', // Bell (ctrl+G)
+        '8',
+        '7',
+        '\r', // CR
+        '$',
+        '4',
+        '\'', // '
+        ',',
+        '!',
+        ':',
+        '(',
+        '5',
+        '"',
+        ')',
+        '2',
+        '#',
+        '6',
+        '0',
+        '1',
+        '9',
+        '?',
+        '&',
+        ' ', // Figures code goes here.
+        '.',
+        '/',
+        ';',
+        ' ' // Letters code goes here.
+    };
 
     private bool Figures = false;
     private Stream? inputData;

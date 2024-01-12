@@ -1,4 +1,7 @@
-﻿namespace Baudot;
+﻿using System.Diagnostics;
+using System.Text;
+
+namespace Baudot;
 
 /*
     Baudot Translator
@@ -48,7 +51,7 @@ public class Translator
         'E',
         '\n', // LF
         'A',
-        ' ', // Space (intentional)
+        ' ', // Space
         'S',
         'I',
         'U',
@@ -71,11 +74,11 @@ public class Translator
         'O',
         'B',
         'G',
-        ' ', // Figures code goes here.
+        '|', // Figures code place holder.
         'M',
         'X',
         'V',
-        ' ' // Letters code goes here.
+        '|' // Letters code place holder.
     };
 
     private char[] USBaudotFigures = new char[] {
@@ -83,14 +86,14 @@ public class Translator
         '3',
         '\n', // LF
         '-',
-        ' ', // Space (intentional)
+        ' ', // Space
         '\u0007', // Bell (ctrl+G)
         '8',
         '7',
         '\r', // CR
         '$',
         '4',
-        '\'', // '
+        '\'', // Apostrophe
         ',',
         '!',
         ':',
@@ -106,19 +109,31 @@ public class Translator
         '9',
         '?',
         '&',
-        ' ', // Figures code goes here.
+        '|', // Figures code place holder.
         '.',
         '/',
         ';',
-        ' ' // Letters code goes here.
+        '|' // Letters code place holder.
     };
 
     private bool Figures = false;
-    private Stream? inputData;
-    private Stream? outputData;
+    private int NewLineByte = 2;
+    private int FiguresByte = 27;
+    private int LettersByte = 31;
+    private string NewLineValue = System.Environment.NewLine;
+    private Stream inputData = new MemoryStream(1);
+    private Stream outputData = new MemoryStream(1);
 
-    public Translator(Stream input, Stream output)
+    public Translator(Stream input, Stream output, string? NewLine = null)
     {
+        if (input == null)
+        {
+            throw new ArgumentNullException(nameof(input), "Input stream cannot be null.");
+        }
+        if (output == null)
+        {
+            throw new ArgumentNullException(nameof(output), "Output stream cannot be null.");
+        }
         if (!input.CanRead)
         {
             throw new ArgumentException("Can't read from input stream.", nameof(input));
@@ -129,6 +144,7 @@ public class Translator
         }
         inputData = input;
         outputData = output;
+        NewLineValue = NewLine ?? NewLineValue;
     }
 
     public void SetLetters()
@@ -141,14 +157,55 @@ public class Translator
         Figures = true;
     }
 
-    public void ToBaudot()
+    public void ToASCII()
     {
-        int prior = 0;
-        int i = inputData.ReadByte();
-        while (i != -1)
+        byte input;
+        using BinaryReader br = new(inputData);
+        using StreamWriter sw = new(outputData, System.Text.Encoding.ASCII);
+        while (br.PeekChar() > -1)
         {
-
+            input = br.ReadByte();
+            if (input == 0)
+            {
+                continue; // No need to add null characters to output string.
+            }
+            if (input == 8)
+            {
+                continue; // Computers don't actually do LFs.
+            }
+            else if (input == 2)
+            {
+                sw.Write(System.Environment.NewLine); // TODO: Allow dev to override this value.
+            }
+            else if (input == LettersByte && Figures)
+            {
+                Figures = false;
+            }
+            else if (input == FiguresByte && !Figures)
+            {
+                Figures = true;
+            }
+            else if (input > 31)
+            {
+                throw new InvalidDataException("Input stream contained a byte value outside 0-31.");
+            }
+            else
+            {
+                if (Figures)
+                {
+                    sw.Write(USBaudotFigures[input]);
+                }
+                else
+                {
+                    sw.Write(USBaudotLetters[input]);
+                }
+            }
         }
+    }
+
+    public async void ToBaudotAsync()
+    {
+
     }
 }
 

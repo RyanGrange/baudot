@@ -177,11 +177,11 @@ public class Translator
             {
                 sw.Write(System.Environment.NewLine); // TODO: Allow dev to override this value.
             }
-            else if (input == LettersByte && Figures)
+            else if (input == LettersByte)
             {
                 Figures = false;
             }
-            else if (input == FiguresByte && !Figures)
+            else if (input == FiguresByte)
             {
                 Figures = true;
             }
